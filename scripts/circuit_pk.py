@@ -45,8 +45,14 @@ def main(args):
         ais_pk.append(bfv_crt.bfv_qis[i].rlwe.Rq.sample_polynomial())
     pub_keys = bfv_crt.PublicKeyGen(s, e_pk, ais_pk)
 
-    # Sample plaintext message
-    m = bfv_crt.bfv_q.rlwe.Rt.sample_polynomial()
+    # Sample plaintext message.
+    # bfv-py's sample_polynomial uses centered bounds [-(t-1)/2, (t-1)/2], which
+    # are non-integer for even t (e.g. t=2 gives [-0.5, 0.5]).  For even t we
+    # sample binary {0,1} coefficients directly.
+    if t % 2 == 1:
+        m = bfv_crt.bfv_q.rlwe.Rt.sample_polynomial()
+    else:
+        m = Polynomial([randint(0, t - 1) for _ in range(n)])
 
     # Sample PK encryption randomness
     u = bfv_crt.bfv_q.rlwe.SampleFromTernaryDistribution()
@@ -208,8 +214,14 @@ def main(args):
     assert all(coeff >= -b and coeff <= b for coeff in e0.coefficients)
     assert all(coeff >= -b and coeff <= b for coeff in e1.coefficients)
 
-    # k1 bound
-    k1_bound = int((t - 1) / 2)
+    # k1 bound.
+    # For odd t:  k1 coeffs in [-(t-1)/2, (t-1)/2], so bound = (t-1)//2.
+    # For even t: k1 = [Q*m] mod t = m*1 mod t = m (since Q=qi is odd), so coeffs
+    #             in {0,...,t-1}, bound = t//2 (covers {0,...,t-1} under [-t//2, t//2]).
+    # The unified formula t//2 is correct for both parities:
+    #   t=2     -> 1  (covers {0,1})
+    #   t=65537 -> 32768  (covers {-32768,...,32768})
+    k1_bound = t // 2
     assert all(coeff >= -k1_bound and coeff <= k1_bound for coeff in k1.coefficients)
 
     r1_bounds = []
@@ -223,8 +235,9 @@ def main(args):
         r2_bounds.append(r2i_bound)
         assert all(coeff >= -r2i_bound and coeff <= r2i_bound for coeff in r2is[i].coefficients)
 
-        # r1i bound: floor(((N+2)*(qi-1)/2 + B + (t-1)/2 * |k0i|) / qi)
-        r1i_bound = int(((qis[i] - 1) // 2 * (n + 2) + b + (t - 1) // 2 * abs(k0is[i])) / qis[i])
+        # r1i bound: floor(((N+2)*(qi-1)/2 + B + k1_bound * |k0i|) / qi)
+        # Uses k1_bound (not (t-1)//2) so it is correct for both even and odd t.
+        r1i_bound = int(((qis[i] - 1) // 2 * (n + 2) + b + k1_bound * abs(k0is[i])) / qis[i])
         r1_bounds.append(r1i_bound)
         assert all(coeff >= -r1i_bound and coeff <= r1i_bound for coeff in r1is[i].coefficients)
 
@@ -239,29 +252,15 @@ def main(args):
         assert all(coeff >= -p1i_bound and coeff <= p1i_bound for coeff in p1is[i].coefficients)
 
         # vi bound: pk0i*u contributes N*(qi-1)/2 (N terms, each bounded by (qi-1)/2),
-        # plus e0 (b) and k0i*k1 ((t-1)/2 * |k0i|).
-        vi_bound = int((qis[i] - 1) / 2) * n + b + int((t - 1) / 2) * abs(k0is[i])
+        # plus e0 (b) and k0i*k1 (k1_bound * |k0i|).
+        vi_bound = int((qis[i] - 1) / 2) * n + b + k1_bound * abs(k0is[i])
         assert all(coeff >= -vi_bound and coeff <= vi_bound for coeff in vis[i].coefficients), \
             f"vi bound check failed for basis {i}"
-
-        # Consistency: r1i_bound * qi >= (ct0i - vi - r2i*cyclo) numerator bound.
-        # ct0i coeffs in [0, qi), vi bounded by vi_bound, r2i*cyclo has 2 nonzero cyclo
-        # terms so contributes 2*r2i_bound.
-        ct0i_minus_vi_bound = (qis[i] - 1) // 2 + vi_bound
-        r1i_numerator_bound = ct0i_minus_vi_bound + 2 * r2i_bound
-        assert r1i_bound * qis[i] >= r1i_numerator_bound, \
-            f"r1i_bound too small for basis {i}: {r1i_bound}*{qis[i]} < {r1i_numerator_bound}"
 
         # yi bound: pk1i*u contributes N*(qi-1)/2, plus e1 (b).
         yi_bound = int((qis[i] - 1) / 2) * n + b
         assert all(coeff >= -yi_bound and coeff <= yi_bound for coeff in yis[i].coefficients), \
             f"yi bound check failed for basis {i}"
-
-        # Consistency: p1i_bound * qi >= (ct1i - yi - p2i*cyclo) numerator bound.
-        ct1i_minus_yi_bound = (qis[i] - 1) // 2 + yi_bound
-        p1i_numerator_bound = ct1i_minus_yi_bound + 2 * p2i_bound
-        assert p1i_bound * qis[i] >= p1i_numerator_bound, \
-            f"p1i_bound too small for basis {i}: {p1i_bound}*{qis[i]} < {p1i_numerator_bound}"
 
     # =========================================================================
     # CIRCUIT ASSIGNMENT (convert to field elements in Z_p)

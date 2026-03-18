@@ -6,7 +6,7 @@
 //
 // Original Greco code: Copyright (c) 2024 Gaussian, MIT License
 
-use crate::constants::pk_enc_constants_2048_1x53_65537::{
+use crate::constants::pk_enc_constants_2048_1x53_2::{
     E0_BOUND, E1_BOUND, K0IS, K1_BOUND, N, P1_BOUNDS, P2_BOUNDS, QIS, R1_BOUNDS, R2_BOUNDS,
     U_BOUND,
 };
@@ -344,7 +344,7 @@ impl<F: ScalarField> RlcCircuitInstructions<F> for BfvPkEncryptionCircuit {
 mod test {
     use super::pk_test_params;
     use crate::{
-        constants::pk_enc_constants_2048_1x53_65537::{N, R1_BOUNDS},
+        constants::pk_enc_constants_2048_1x53_2::{N, R1_BOUNDS},
         pk_encryption_circuit::BfvPkEncryptionCircuit,
     };
     use axiom_eth::rlc::{
@@ -367,7 +367,7 @@ mod test {
 
     #[test]
     pub fn test_pk_enc_valid() {
-        let file_path = "src/data/pk_enc_2048_1x53_65537.json";
+        let file_path = "src/data/pk_enc_2048_1x53_2.json";
         let mut file = File::open(file_path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
@@ -393,7 +393,7 @@ mod test {
 
     #[test]
     pub fn test_pk_enc_invalid_range() {
-        let file_path = "src/data/pk_enc_2048_1x53_65537.json";
+        let file_path = "src/data/pk_enc_2048_1x53_2.json";
         let mut file = File::open(file_path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
@@ -426,7 +426,7 @@ mod test {
 
     #[test]
     pub fn test_pk_enc_invalid_polys() {
-        let file_path = "src/data/pk_enc_2048_1x53_65537.json";
+        let file_path = "src/data/pk_enc_2048_1x53_2.json";
         let mut file = File::open(file_path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
@@ -466,7 +466,7 @@ mod test {
         // unchanged, Equation 1 remains satisfied and only Equation 2 fails.
         // This gives independent assurance that the p1i/p2i constraint path is
         // actually enforced and cannot be bypassed.
-        let file_path = "src/data/pk_enc_2048_1x53_65537.json";
+        let file_path = "src/data/pk_enc_2048_1x53_2.json";
         let mut file = File::open(file_path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
@@ -496,7 +496,7 @@ mod test {
 
     #[test]
     pub fn test_pk_enc_full_prover() {
-        let file_path_zeroes = "src/data/pk_enc_2048_1x53_65537_zeroes.json";
+        let file_path_zeroes = "src/data/pk_enc_2048_1x53_2_zeroes.json";
         let mut file = File::open(file_path_zeroes).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
@@ -523,7 +523,7 @@ mod test {
             RlcCircuitBuilder::from_stage(CircuitBuilderStage::Prover, 0)
                 .use_params(rlc_circuit_params);
 
-        let file_path = "src/data/pk_enc_2048_1x53_65537.json";
+        let file_path = "src/data/pk_enc_2048_1x53_2.json";
         let mut file = File::open(file_path).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
